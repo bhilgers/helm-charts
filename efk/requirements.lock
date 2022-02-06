@@ -1,0 +1,18 @@
+dependencies:
+- name: elasticsearch
+  repository: https://helm.elastic.co
+  version: 7.14.0
+- name: kibana
+  repository: https://helm.elastic.co
+  version: 7.14.0
+- name: filebeat
+  repository: https://helm.elastic.co
+  version: 7.14.0
+- name: metricbeat
+  repository: https://helm.elastic.co
+  version: 7.14.0
+- name: heartbeat
+  repository: ""
+  version: 7.14.0
+digest: sha256:b02d74ada5fd207868b6e55f64e97e2daf4e76e00e9f76c13d9210b368771c53
+generated: "2021-08-16T12:28:56.5237995+02:00"

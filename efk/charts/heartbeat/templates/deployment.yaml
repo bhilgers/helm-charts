@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "heartbeat.fullname" . }}
+  labels:
+{{ include "heartbeat.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "heartbeat.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "heartbeat.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ template "heartbeat.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: config
+          configMap: 
+            defaultMode: 0777
+            name: {{ template "heartbeat.fullname" . }}-config
+        - name: data
+          hostPath:
+            defaultMode: 0777
+            path: /var/lib/heartbeat-data
+            type: DirectoryOrCreate
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [
+            "-e",
+            "-strict.perms=false"
+          ]
+          env:
+            - name: ELASTICSEARCH_HOST
+              value: {{ .Values.elastic.search.host }}
+            - name: ELASTICSEARCH_PORT
+              value: "{{ .Values.elastic.search.port }}"
+            - name: ELASTICSEARCH_USERNAME
+              value: {{ .Values.elastic.search.username }}
+            - name: ELASTICSEARCH_PASSWORD
+              value: {{ .Values.elastic.search.password }}
+            - name: KIBANA_HOST
+              value: {{ .Values.elastic.kibana.host }}
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/heartbeat/heartbeat.yml
+              subPath: heartbeat.yml
+            - name: data
+              mountPath: /usr/share/heartbeat/data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      initContainers:
+        - name: config-permissons
+          image: busybox:1.28
+          command:
+            - /bin/chown
+            - -R
+            - "1000"
+            - /usr/share/heartbeat/data
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/heartbeat/data
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
